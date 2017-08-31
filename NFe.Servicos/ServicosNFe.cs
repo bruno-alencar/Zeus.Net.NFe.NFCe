@@ -51,6 +51,7 @@ using NFe.Classes.Servicos.Tipos;
 using NFe.Servicos.Retorno;
 using NFe.Utils;
 using NFe.Utils.AdmCsc;
+using NFe.Utils.Assinatura;
 using NFe.Utils.Autorizacao;
 using NFe.Utils.Consulta;
 using NFe.Utils.ConsultaCadastro;
@@ -90,6 +91,8 @@ namespace NFe.Servicos
         private readonly X509Certificate2 _certificado;
         private readonly ConfiguracaoServico _cFgServico;
         private readonly string _path;
+        private Validador _validador;
+        private Assinador _assinador;
 
         /// <summary>
         ///     Cria uma instância da Classe responsável pelos serviços relacionados à NFe
@@ -98,11 +101,14 @@ namespace NFe.Servicos
         public ServicosNFe(ConfiguracaoServico cFgServico)
         {
             _cFgServico = cFgServico;
-            _certificado = CertificadoDigital.ObterCertificado(ConfiguracaoServico.Instancia.Certificado);
+            _certificado = CertificadoDigital.ObterCertificado(cFgServico.Certificado);
             _path = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
 
             //Define a versão do protocolo de segurança
             ServicePointManager.SecurityProtocol = cFgServico.ProtocoloDeSeguranca;
+
+            _validador = new Validador(cFgServico);
+            _assinador = new Assinador(cFgServico);
         }
 
         private void SalvarArquivoXml(string nomeArquivo, string xmlString)
@@ -247,7 +253,7 @@ namespace NFe.Servicos
             #region Valida, Envia os dados e obtém a resposta
 
             var xmlStatus = pedStatus.ObterXmlString();
-            Validador.Valida(ServicoNFe.NfeStatusServico, _cFgServico.VersaoNfeStatusServico, xmlStatus);
+            _validador.Valida(ServicoNFe.NfeStatusServico, _cFgServico.VersaoNfeStatusServico, xmlStatus);
             var dadosStatus = new XmlDocument();
             dadosStatus.LoadXml(xmlStatus);
 
@@ -309,7 +315,7 @@ namespace NFe.Servicos
             #region Valida, Envia os dados e obtém a resposta
 
             var xmlConsulta = pedConsulta.ObterXmlString();
-            Validador.Valida(ServicoNFe.NfeConsultaProtocolo, _cFgServico.VersaoNfeConsultaProtocolo, xmlConsulta);
+            _validador.Valida(ServicoNFe.NfeConsultaProtocolo, _cFgServico.VersaoNfeConsultaProtocolo, xmlConsulta);
             var dadosConsulta = new XmlDocument();
             dadosConsulta.LoadXml(xmlConsulta);
 
@@ -390,14 +396,14 @@ namespace NFe.Servicos
                 pedInutilizacao.infInut.nNFFin.ToString().PadLeft(9, '0'));
             pedInutilizacao.infInut.Id = "ID" + numId;
 
-            pedInutilizacao.Assina(_certificado);
+            pedInutilizacao.Assina(_certificado, _assinador);
 
             #endregion
 
             #region Valida, Envia os dados e obtém a resposta
 
             var xmlInutilizacao = pedInutilizacao.ObterXmlString();
-            Validador.Valida(ServicoNFe.NfeInutilizacao, _cFgServico.VersaoNfeInutilizacao, xmlInutilizacao);
+            _validador.Valida(ServicoNFe.NfeInutilizacao, _cFgServico.VersaoNfeInutilizacao, xmlInutilizacao);
             var dadosInutilizacao = new XmlDocument();
             dadosInutilizacao.LoadXml(xmlInutilizacao);
 
@@ -473,7 +479,7 @@ namespace NFe.Servicos
             {
                 evento.infEvento.Id = "ID" + evento.infEvento.tpEvento + evento.infEvento.chNFe +
                                       evento.infEvento.nSeqEvento.ToString().PadLeft(2, '0');
-                evento.Assina(_certificado);
+                evento.Assina(_certificado, _assinador);
             }
 
             #endregion
@@ -481,7 +487,7 @@ namespace NFe.Servicos
             #region Valida, Envia os dados e obtém a resposta
 
             var xmlEvento = pedEvento.ObterXmlString();
-            Validador.Valida(servicoEvento, _cFgServico.VersaoRecepcaoEventoCceCancelamento, xmlEvento);
+            _validador.Valida(servicoEvento, _cFgServico.VersaoRecepcaoEventoCceCancelamento, xmlEvento);
             var dadosEvento = new XmlDocument();
             dadosEvento.LoadXml(xmlEvento);
 
@@ -673,7 +679,7 @@ namespace NFe.Servicos
                 ServicoNFe.RecepcaoEventoEpec.VersaoServicoParaString(_cFgServico.VersaoRecepcaoEventoCceCancelamento);
 
             if (string.IsNullOrEmpty(nfe.infNFe.Id))
-                nfe.Assina().Valida();
+                nfe.Assina(_cFgServico).Valida();
 
             var detevento = new detEvento
             {
@@ -770,7 +776,7 @@ namespace NFe.Servicos
             #region Valida, Envia os dados e obtém a resposta
 
             var xmlConsulta = pedConsulta.ObterXmlString();
-            Validador.Valida(ServicoNFe.NfeConsultaCadastro, _cFgServico.VersaoNfeConsultaCadastro, xmlConsulta);
+            _validador.Valida(ServicoNFe.NfeConsultaCadastro, _cFgServico.VersaoNfeConsultaCadastro, xmlConsulta);
             var dadosConsulta = new XmlDocument();
             dadosConsulta.LoadXml(xmlConsulta);
 
@@ -857,7 +863,7 @@ namespace NFe.Servicos
             #region Valida, Envia os dados e obtém a resposta
 
             var xmlConsulta = pedDistDFeInt.ObterXmlString();
-            Validador.Valida(ServicoNFe.NFeDistribuicaoDFe, _cFgServico.VersaoNFeDistribuicaoDFe, xmlConsulta);
+            _validador.Valida(ServicoNFe.NFeDistribuicaoDFe, _cFgServico.VersaoNFeDistribuicaoDFe, xmlConsulta);
             var dadosConsulta = new XmlDocument();
             dadosConsulta.LoadXml(xmlConsulta);
 
@@ -959,7 +965,7 @@ namespace NFe.Servicos
                 //Caso o lote seja enviado para o PR, colocar o namespace nos elementos <NFe> do lote, pois o serviço do PR o exige, conforme https://github.com/adeniltonbs/Zeus.Net.NFe.NFCe/issues/33
                 xmlEnvio = xmlEnvio.Replace("<NFe>", "<NFe xmlns=\"http://www.portalfiscal.inf.br/nfe\">");
 
-            Validador.Valida(ServicoNFe.NfeRecepcao, _cFgServico.VersaoNfeRecepcao, xmlEnvio);
+            _validador.Valida(ServicoNFe.NfeRecepcao, _cFgServico.VersaoNfeRecepcao, xmlEnvio);
             var dadosEnvio = new XmlDocument();
             dadosEnvio.LoadXml(xmlEnvio);
 
@@ -1089,7 +1095,7 @@ namespace NFe.Servicos
                 //Caso o lote seja enviado para o PR, colocar o namespace nos elementos <NFe> do lote, pois o serviço do PR o exige, conforme https://github.com/adeniltonbs/Zeus.Net.NFe.NFCe/issues/33
                 xmlEnvio = xmlEnvio.Replace("<NFe>", "<NFe xmlns=\"http://www.portalfiscal.inf.br/nfe\">");
 
-            Validador.Valida(ServicoNFe.NFeAutorizacao, _cFgServico.VersaoNFeAutorizacao, xmlEnvio);
+            _validador.Valida(ServicoNFe.NFeAutorizacao, _cFgServico.VersaoNFeAutorizacao, xmlEnvio);
             var dadosEnvio = new XmlDocument();
             dadosEnvio.LoadXml(xmlEnvio);
 
@@ -1222,7 +1228,7 @@ namespace NFe.Servicos
             #region Valida, Envia os dados e obtém a resposta
 
             var xmlDownload = pedDownload.ObterXmlString();
-            Validador.Valida(ServicoNFe.NfeDownloadNF, _cFgServico.VersaoNfeDownloadNF, xmlDownload);
+            _validador.Valida(ServicoNFe.NfeDownloadNF, _cFgServico.VersaoNfeDownloadNF, xmlDownload);
             var dadosDownload = new XmlDocument();
             dadosDownload.LoadXml(xmlDownload);
 

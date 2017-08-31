@@ -47,10 +47,13 @@ namespace NFe.AppTeste
     public class ConfiguracaoApp
     {
         private ConfiguracaoServico _cfgServico;
+        private ConfiguracaoServico _configuracaoParametro;
 
-        public ConfiguracaoApp()
+        public ConfiguracaoApp(ConfiguracaoServico configuracaoServico = null)
         {
-            CfgServico = ConfiguracaoServico.Instancia;
+            _configuracaoParametro = configuracaoServico ?? ConfiguracaoServico.Instancia;
+
+            CfgServico = _configuracaoParametro;
             CfgServico.tpAmb = TipoAmbiente.taHomologacao;
             CfgServico.tpEmis = TipoEmissao.teNormal;
             CfgServico.ProtocoloDeSeguranca = ServicePointManager.SecurityProtocol;
@@ -65,13 +68,13 @@ namespace NFe.AppTeste
         {
             get
             {
-                ConfiguracaoServico.Instancia.CopiarPropriedades(_cfgServico);
+                _configuracaoParametro.CopiarPropriedades(_cfgServico);
                 return _cfgServico;
             }
             set
             {
                 _cfgServico = value;
-                ConfiguracaoServico.Instancia.CopiarPropriedades(value);
+                _configuracaoParametro.CopiarPropriedades(value);
             }
         }
 

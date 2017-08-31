@@ -39,8 +39,15 @@ using NFe.Utils.Excecoes;
 
 namespace NFe.Utils.Validacao
 {
-    public static class Validador
+    public class Validador
     {
+        private ConfiguracaoServico _cfgServico;
+
+        public Validador(ConfiguracaoServico cfgServico = null)
+        {
+            _cfgServico = cfgServico;
+        }
+
         internal static string ObterArquivoSchema(ServicoNFe servicoNFe, VersaoServico versaoServico, bool loteNfe = true)
         {
             switch (servicoNFe)
@@ -94,10 +101,15 @@ namespace NFe.Utils.Validacao
             return null;
         }
 
-        public static void Valida(ServicoNFe servicoNFe, VersaoServico versaoServico, string stringXml, bool loteNfe = true)
+        public void Valida(ServicoNFe servicoNFe, VersaoServico versaoServico, string stringXml, bool loteNfe = true)
         {
-            var pathSchema = ConfiguracaoServico.Instancia.DiretorioSchemas;
+            var pathSchema = String.Empty;
 
+            if (_cfgServico.DiretorioSchemas == null)
+                pathSchema = ConfiguracaoServico.Instancia.DiretorioSchemas;
+            else
+                pathSchema = _cfgServico.DiretorioSchemas;
+                
             if (!Directory.Exists(pathSchema))
                 throw new Exception("Diretório de Schemas não encontrado: \n" + pathSchema);
 
